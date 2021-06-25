@@ -19,8 +19,8 @@
         >
           <b-card
             :title="img.name"
-            :sub-title="img.date"
-            :img-src="img.url"
+            :sub-title="img.created_at"
+            :img-src="`http://localhost/img-gallery/public/images/${img.url}`"
             img-alt="Image"
             img-top
             tag="article"
@@ -46,11 +46,26 @@
       <div class="d-block text-center">
         <!-- <h3>Hello From This Modal!</h3> -->
         <b-form-group label-cols-sm="2" class="mb-5" label-size="lg">
+          <b-form-input
+            v-model="form.name"
+            placeholder="Ingresa el nombre de la imagen"
+          ></b-form-input>
+        </b-form-group>
+        <b-form-group label-cols-sm="2" class="mb-5" label-size="lg">
+          <b-form-textarea
+            id="textarea"
+            v-model="form.description"
+            placeholder="Ingresa la descripcion de la imagen"
+            rows="3"
+            max-rows="6"
+          ></b-form-textarea>
+        </b-form-group>
+        <b-form-group label-cols-sm="2" class="mb-5" label-size="lg">
           <b-form-file
             id="file-large"
             size="lg"
             @change="onChangeImage($event)"
-            v-model="img"
+            
           ></b-form-file>
         </b-form-group>
         <b-row id="seccion-preview" style="display:none">
@@ -75,6 +90,7 @@
 <script>
 // @ is an alias to /src
 import HelloWorld from "@/components/HelloWorld.vue";
+import axios from "axios";
 
 export default {
   name: "Home",
@@ -83,54 +99,34 @@ export default {
   },
   data: function() {
     return {
-      img: null,
-      images: [
-        {
-          id: 1,
-          name: "Hola",
-          url: "https://picsum.photos/600/300/?image=25",
-          description: "Lorem impsu",
-          date: "2020-06-15",
-        },
-        {
-          id: 1,
-          name: "Hola como",
-          url: "https://picsum.photos/600/300/?image=65",
-          description: "Lorem impsu",
-          date: "2020-06-15",
-        },
-        {
-          id: 1,
-          name: "Hola como estas",
-          url: "https://picsum.photos/600/300/?image=25",
-          description: "Lorem impsu",
-          date: "2020-06-15",
-        },
-        {
-          id: 1,
-          name: "Hola kjsdhgfkjsd",
-          url: "https://picsum.photos/600/300/?image=95",
-          description: "Lorem impsu",
-          date: "2020-06-15",
-        },
-        {
-          id: 1,
-          name: "Holdfsfsdfda",
-          url: "https://picsum.photos/600/300/?image=5",
-          description: "Lorem impsu",
-          date: "2020-06-15",
-        },
-        {
-          id: 1,
-          name: "Hosdfsdfla",
-          url: "https://picsum.photos/600/300/?image=125",
-          description: "Lorem impsu",
-          date: "2020-06-15",
-        },
-      ],
+      form: {
+        img: null,
+        name: "",
+        description: "",
+        user_id: 0,
+      },
+      images: [],
     };
   },
+  created:function(){
+    this.init();
+  },
   methods: {
+    init: async function(){
+      let dataStorage = JSON.parse(localStorage.getItem("dataLogin"));
+      try {
+        let res = await axios.get("/images", {
+          headers: {
+            Accept: "application/json",
+            Authorization: `Bearer ${dataStorage.data.token}`,
+          },
+        });
+        // console.log(res)
+        if (res.status == 200) {
+          this.images = res.data.data
+        }
+      } catch (error) {}
+    },
     addImg: function() {
       this.$bvModal.show("bv-modal-example");
     },
@@ -142,9 +138,31 @@ export default {
       output.onload = function() {
         URL.revokeObjectURL(output.src); // free memory
       };
+      this.form.img = event.target.files[0];
     },
-    saveImg: function() {
-      console.log(this.img);
+    saveImg: async function() {
+      // console.log(this.form);
+      let dataStorage = JSON.parse(localStorage.getItem("dataLogin"));
+      this.form.user_id = dataStorage.data.id;
+      let data = new FormData();
+      data.append('image',this.form.img)
+      data.append('user_id',this.form.user_id)
+      data.append('name',this.form.name)
+      data.append('description',this.form.description)
+      // console.log(dataStorage.data.token);
+      try {
+        let res = await axios.post("/images", data, {
+          headers: {
+            // Accept: "application/json",
+            Authorization: `Bearer ${dataStorage.data.token}`,
+          },
+        });
+        // console.log(res)
+        if (res.status == 200) {
+          this.init();
+          this.$bvModal.hide("bv-modal-example");
+        }
+      } catch (error) {}
     },
   },
 };
